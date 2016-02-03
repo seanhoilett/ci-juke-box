@@ -1,0 +1,18 @@
+{
+  "name": "slack-jukebox",
+  "version": "1.0.0",
+  "description": "A jukebox bot for slack",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "botkit": "0.0.5",
+    "q": "^1.4.1"
+  },
+  "devDependencies": {
+    "node-dev": "^3.0.0"
+  }
+}
