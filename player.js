@@ -89,6 +89,16 @@ var player = {
             player.isPaused = !this.isPaused;
         });
     },
+    play: function() {
+        if(player.isPaused){
+            this.playPause();
+        }
+    },
+    pause: function() {
+        if(!player.isPaused){
+            this.playPause();
+        }
+    },
     next: function () {
         getPlayerProcess().then(function (processs) {
             console.log('Quitting this song');

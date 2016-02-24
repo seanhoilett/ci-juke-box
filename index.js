@@ -68,7 +68,7 @@ controller.hears(['next'], ["direct_message", "direct_mention", "mention"], func
     player.next();
 });
 
-controller.hears(['louder', 'can\'t hear it', 'too low', 'too soft'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
+controller.hears(['louder', 'can\'t hear', 'too low', 'too soft'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
     player.volumeUp();
     sayVolume(player.volume, bot, message);
 });
@@ -86,13 +86,26 @@ controller.hears(['half as loud'], ["direct_message", "direct_mention", "mention
     sayVolume(player.volume, bot, message);
 });
 
+controller.hears(['silence', 'silence!', 'hush', 'hush!', 'shut up'], ["direct_mention", "mention"], function (bot, message) {
+    player.pause();
+    bot.reply(message, 'A moment of silence? Say *as you were* to resume the music');
+});
 controller.hears(['silence', 'silence!', 'hush', 'hush!', 'shut up'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
-    var targetVolume = lowest;
-    for(var i=1; i<=(targetVolume-player.volume)/interval; i++) {
-        player.volumeDown();
-        player
-    }
-    sayVolume(player.volume, bot, message);
+    player.pause();
+    bot.reply(message, 'A moment of silence? Will let the others know. Say *as you were* to resume the music.');
+    botWebhook.sendWebhook({
+        text: 'Music has been paused. You can continue adding music until someone says *as you were*',
+        channel: config.mainChannel
+    }, function (err, res) {
+        if (err) {
+            // ...
+        }
+    });
+});
+
+controller.hears(['as you were', 'play', 'continue', 'carry on'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
+    player.play();
+    bot.reply(message, 'OK');
 });
 
 controller.hears(['2x louder', 'twice as loud'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
