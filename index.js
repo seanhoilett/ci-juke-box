@@ -22,20 +22,26 @@ bot.startRTM(function (err, bot, payload) {
     }
 });
 
+var alreadyQueued = 'Item already in the queue';
 var extractAndPlayLink = function (message) {
+    var prevQueueLength = player.getNoOfItemsInQueue();
     var link = message.match[0].replace(/<|>/g, ''),
         position = player.addToQueue(link),
         reply;
-    switch(position) {
-        case 0:
-            reply = 'Playing it right away.';
-            break;
-        case 1:
-            reply = 'I\'ll play it right after this one.';
-            break;
-        default:
-            reply = 'Queued at position #' + position;
-    }
+        if(position>=0) {
+            switch(position) {
+                case 0:
+                    reply = 'Playing it right away.';
+                    break;
+                case 1:
+                    reply = 'I\'ll play it right after this one.';
+                    break;
+                default:
+                    reply = 'Queued at position #' + position;
+            }
+        } else {
+            reply = alreadyQueued;
+        }
     return reply;
 };
 
@@ -46,21 +52,23 @@ controller.hears(["<http.*youtube.*>"], ["direct_mention", "mention", 'ambient']
 controller.hears(["<http.*youtube.*>"], ["direct_message"], function (bot, message) {
     var reply = extractAndPlayLink(message);
     bot.reply(message, reply);
-    botWebhook.sendWebhook({
-        text: 'Someone secretly add an item. ' + reply,
-        channel: config.mainChannel
-    }, function (err, res) {
-        if (err) {
-            // ...
-        }
-    });
+    if(reply != alreadyQueued){
+        botWebhook.sendWebhook({
+            text: 'Someone secretly add an item. ' + reply,
+            channel: config.mainChannel
+        }, function (err, res) {
+            if (err) {
+                // ...
+            }
+        });
+    }
 });
 
 controller.hears(['next'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
     player.next();
 });
 
-controller.hears(['louder', 'can\t hear it', 'too low', 'too soft'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
+controller.hears(['louder', 'can\'t hear it', 'too low', 'too soft'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
     player.volumeUp();
     sayVolume(player.volume, bot, message);
 });

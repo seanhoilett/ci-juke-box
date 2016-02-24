@@ -25,6 +25,7 @@ var executeCommand = function(command){
 var playFromTopOfQueue = function () {
     if (playlist.length > 0) {
         var curPlayingLink = playlist.splice(0, 1);
+        player.currentFile = curPlayingLink;
         var cmd = 'omxplayer `youtube-dl -g ' + curPlayingLink + '` --vol ' + player.volume;
         player.isPaused = false;
         player.isPlaying = true;
@@ -60,6 +61,7 @@ var player = {
     volume: -600, // -300
     isPlaying: false,
     isPaused: false,
+    currentFile: null,
     volumeDown: function () {
         getPlayerProcess().then(function (processs) {
             try {
@@ -94,14 +96,24 @@ var player = {
         });
     },
     addToQueue: function (file, format) {
-        playlist.push(file);
-        if (!this.isPlaying) {
-            playFromTopOfQueue();
+        if(this.currentFile != file && playlist.indexOf(file)<0) {
+            playlist.push(file);
+            if (!this.isPlaying) {
+                playFromTopOfQueue();
+            }    
+            return this.getNoOfItemsInQueue();
+        } else {
+            this.events.emit(this.events.ALREADY_QUEUED);
+            return -1;
         }
-        return playlist.length;
+        
+    },
+    getNoOfItemsInQueue: function() {
+      return playlist.length;  
     },
     events: {
         SONG_ENDED: 'song-ended',
+        ALREADY_QUEUED: 'already-queued', 
 
         on: function(evenName, func) {
             eventEmitter.on('jukebox:', func);
