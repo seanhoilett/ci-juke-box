@@ -36,8 +36,8 @@ var playFromTopOfQueue = function () {
                 player.isPaused = false;
                 player.isPlaying = false;
                 player.events.emit(player.events.SONG_ENDED);
-                //eventEmitter.emit(player.events.SONG_ENDED);
                 playerProcess = null;
+                player.currentFile = null;
                 playFromTopOfQueue();
             });
         });
@@ -86,7 +86,7 @@ var player = {
         getPlayerProcess().then(function (processs) {
             console.log('Pausing the song');
             processs.stdin.write('p');
-            player.isPaused = !this.isPaused;
+            player.isPaused = !player.isPaused;
         });
     },
     play: function() {

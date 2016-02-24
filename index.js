@@ -91,16 +91,20 @@ controller.hears(['silence', 'silence!', 'hush', 'hush!', 'shut up'], ["direct_m
     bot.reply(message, 'A moment of silence? Say *as you were* to resume the music');
 });
 controller.hears(['silence', 'silence!', 'hush', 'hush!', 'shut up'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
-    player.pause();
-    bot.reply(message, 'A moment of silence? Will let the others know. Say *as you were* to resume the music.');
-    botWebhook.sendWebhook({
-        text: 'Music has been paused. You can continue adding music until someone says *as you were*',
-        channel: config.mainChannel
-    }, function (err, res) {
-        if (err) {
-            // ...
-        }
-    });
+    if(!player.isPaused) {
+        player.pause();
+        bot.reply(message, 'A moment of silence? Will let the others know. Say *as you were* to resume the music.');
+        botWebhook.sendWebhook({
+            text: 'Music has been paused. You can continue adding music until someone says *as you were*',
+            channel: config.mainChannel
+        }, function (err, res) {
+            if (err) {
+                // ...
+            }
+        });
+    } else {
+        bot.reply(message, 'Already paused.');
+    }
 });
 
 controller.hears(['as you were', 'play', 'continue', 'carry on'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
