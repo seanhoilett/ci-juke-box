@@ -110,8 +110,17 @@ controller.hears(['as loud as you can'], ["direct_message", "direct_mention", "m
     }
     sayVolume(player.volume, bot, message);
 });
-controller.hears(['br'], ["direct_message"], function (bot, message) {
+controller.hears(['broadcast update'], ["direct_message"], function (bot, message) {
+    bot.reply(message, 'Sure thing!');
+    botWebhook.sendWebhook({
+        text: config.updateText,
+        channel: config.mainChannel
+    }, function (err, res) {
+        if (err) {
+            // ...
+        }
     });
+});
 
 var sayVolume = function(currentVolume, bot, message) {
     var volPerCent = (1-(currentVolume/lowest))*100;
