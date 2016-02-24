@@ -1,0 +1,5 @@
+{
+	"botApiToken": "xoxb-api-token",
+	"mainChannel": "#thechannel",
+	"webHookUrl": 'https://hooks.slack.com/services/the-channel-hook-you-use-to-update-everyone-about-jukebox'
+}

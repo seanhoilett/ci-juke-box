@@ -1,73 +1,117 @@
 'use strict';
 
-var API_TOKEN = 'the-api-token-goes-here',
-	q=require('q'),
-	exec = require('child_process').exec,
-	events = require('events'),
-	eventEmitter = new events.EventEmitter(),
-	Botkit = require('botkit'),
-	controller = Botkit.slackbot(),
-	bot = controller.spawn({
-  		token: API_TOKEN
-	}),
-	EVENT_SONG_ENDED = 'jukebox:song-ended';
+var config = require('./config.json');
 
-bot.startRTM(function(err,bot,payload) {
-  if (err) {
-    throw new Error('Could not connect to Slack');
-  }
+var API_TOKEN = config.botApiToken,
+    q = require('q'),
+    Botkit = require('botkit'),
+    controller = Botkit.slackbot(),
+    bot = controller.spawn({
+        token: API_TOKEN
+    }),
+    botWebhook = controller.spawn({
+        incoming_webhook: {
+            url: config.webHookUrl
+        }
+    }),
+    player = require('./player');
+
+bot.startRTM(function (err, bot, payload) {
+    if (err) {
+        throw new Error('Could not connect to Slack');
+    }
 });
 
-var songIsPlaying = false,
-	youtubeSongs = [],
-	curPlayingLink;
-
-var playNextYoutubeLink = function() {
-	if(youtubeSongs.length>0){
-		curPlayingLink = youtubeSongs.splice(0,1);
-		var cmd ='omxplayer `youtube-dl -g ' + curPlayingLink + '`';
-		songIsPlaying = true;
-		executeCommand(cmd).then(function(){
-			console.log('Song has ended!');
-			songIsPlaying = false;
-			eventEmitter.emit(EVENT_SONG_ENDED);
-		});
-	}
+var extractAndPlayLink = function (message) {
+    var link = message.match[0].replace(/<|>/g, ''),
+        position = player.addToQueue(link),
+        reply;
+    switch(position) {
+        case 0:
+            reply = 'Playing it right away.';
+            break;
+        case 1:
+            reply = 'I\'ll play it right after this one.';
+            break;
+        default:
+            reply = 'Queued at position #' + position;
+    }
+    return reply;
 };
 
-var executeCommand = function(command){
-  var d = q.defer();
-  exec(command, function (error, stdout, stderr) {
-    console.log('Running command: ', command);
-    if (error) {
-      console.error('error: ', error);
-      console.error('stderr: ', stderr);
-      d.reject(error);
-    } else {
-      d.resolve(stdout);
-    }
-    console.log(stdout);
-  });
-  return d.promise;
-}
-
-eventEmitter.on(EVENT_SONG_ENDED, playNextYoutubeLink);
-
-controller.hears(["<http.*youtube.*>"],["direct_message","direct_mention","mention"],function(bot,message) {
-	var reply='';
-	var link = message.match[0].replace(/<|>/g,'');
-	if(youtubeSongs.indexOf(link)<0 && curPlayingLink!=link) {
-		var prevLength = youtubeSongs.length;
-	  	console.log('Adding %s to the queue', link);
-	  	youtubeSongs.push(link);
-	  	if(prevLength==0 && !songIsPlaying) {
-			reply='Your song will be played next!';
-			playNextYoutubeLink();
-		} else {
-			reply = 'Your song has been queued at positon ' + (youtubeSongs.length);
-		}
-  	} else {
-  		reply='The song is already in the queue.';
-  	}
-	bot.reply(message, reply);
+controller.hears(["<http.*youtube.*>"], ["direct_mention", "mention", 'ambient'], function (bot, message) {
+    bot.reply(message, extractAndPlayLink(message));
 });
+
+controller.hears(["<http.*youtube.*>"], ["direct_message"], function (bot, message) {
+    var reply = extractAndPlayLink(message);
+    bot.reply(message, reply);
+    botWebhook.sendWebhook({
+        text: 'Someone secretly add an item. ' + reply,
+        channel: config.mainChannel
+    }, function (err, res) {
+        if (err) {
+            // ...
+        }
+    });
+});
+
+controller.hears(['next'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
+    player.next();
+});
+
+controller.hears(['louder', 'can\t hear it', 'too low', 'too soft'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
+    player.volumeUp();
+    sayVolume(player.volume, bot, message);
+});
+
+controller.hears(['too loud', 'turn it down'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
+    player.volumeDown();
+    sayVolume(player.volume, bot, message);
+});
+
+controller.hears(['half as loud'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
+    var targetVolume = (lowest - player.volume)/2;
+    for(var i=1; i<=(targetVolume/interval); i++) {
+        player.volumeDown();
+    }
+    sayVolume(player.volume, bot, message);
+});
+
+controller.hears(['silence', 'silence!', 'hush', 'hush!', 'shut up'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
+    var targetVolume = lowest;
+    for(var i=1; i<=(targetVolume-player.volume)/interval; i++) {
+        player.volumeDown();
+        player
+    }
+    sayVolume(player.volume, bot, message);
+});
+
+controller.hears(['2x louder', 'twice as loud'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
+    var targetVolume =  - player.volume*2;
+    for(var i=1; i<=((targetVolume-player.volume)/interval); i++) {
+        player.volumeUp();
+    }
+    sayVolume(player.volume, bot, message);
+});
+
+controller.hears(['as loud as you can'], ["direct_message", "direct_mention", "mention"], function (bot, message) {
+    var targetVolume=loudest;
+    for(var i=1; i<=((player.volume-targetVolume)/interval); i++) {
+        player.volumeUp();
+    }
+    sayVolume(player.volume, bot, message);
+});
+controller.hears(['br'], ["direct_message"], function (bot, message) {
+    });
+
+var sayVolume = function(currentVolume, bot, message) {
+    var volPerCent = (1-(currentVolume/lowest))*100;
+    console.log('%d - (%d/%d)', 100, currentVolume, lowest);
+    bot.reply(message, 'OK. Volume is set at ' + Math.floor(volPerCent) + '%');
+};
+
+
+var lowest = -3600;
+var loudest = 0;
+var interval = -300;
